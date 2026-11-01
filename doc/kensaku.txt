@@ -59,27 +59,55 @@ Neovim では動作しません (Vim9 script のクラスと :import を使用�
 	:Kensaku kensaku
 
 <
+							*:Kensaku*
+バッファ内を {value} の Migemo 正規表現で検索し、最初のマッチへ移動します。
+
 これ以外の使い方をする場合は |kensaku#query()| を呼び出してください: >
 
 	let @/ = kensaku#query('kensaku')
 	normal! n
 
 <
-:kensaku-search.vim: のような検索インテグレーションを使う場合は、プラグイ
-ン側で `kensaku#query()` を呼び出してください。
+|kensaku#query()| は既定で "\m" を前置した正規表現を返します。"\v" を前置
+する lambdalisue/vim-kensaku-command のようなインテグレーションプラグイン
+と組み合わせても、"\v" の後に "\m" が来るため magic モードで解釈され、その
+まま動きます。
+
+このプラグインも |:Kensaku| コマンドを提供します。vim-kensaku-command と
+併用する場合、|:Kensaku| は後に読み込まれたプラグインの定義が使われます。
 
 ==============================================================================
 5. 関数						*kensaku-functions*
 
-kensaku#query({value})					*kensaku#query()*
+kensaku#query({value}[, {option}])			*kensaku#query()*
 
-	{value} の Migemo 正規表現を文字列で返します。正規表現には "\m" を
-	前置しないので、必要に応じて呼び出し側で前置してください。実際に
-	検索に使う前に `\m` を付けるのが簡単です: >
+	{value} の Migemo 正規表現を文字列で返します。既定では "\m" を前
+	置した文字列を返します: >
 
-		let @/ = '\m' . kensaku#query('kensaku')
+		let @/ = kensaku#query('kensaku')
 
-<	kensaku#reload()					*kensaku#reload()*
+<
+	{option} には以下のパラメータがあります。
+
+	"rxop"	正規表現に利用する記号文字の辞書です。prefix / or /
+		startGroup / endGroup / startClass / endClass / newline /
+		escape を持ちます。既定値は |g:kensaku#rxop#vim| です。
+		旧形式のリスト
+		[prefix, or, startGroup, endGroup, startClass, endClass,
+		newline] と
+		[or, startGroup, endGroup, startClass, endClass, newline]
+		も利用できますが非推奨です。
+
+	kensaku#set_roman_table() (azik などのローマ字テーブル差し替え) は
+	この実装では未対応です。
+
+kensaku#query_async({value}, {success}[, {option}])	*kensaku#query_async()*
+
+	|kensaku#query()| の互換インターフェースです。この実装は同期なので
+	{success} はその場で呼ばれます。{option} は |kensaku#query()| と同
+	じです。
+
+kensaku#reload()					*kensaku#reload()*
 
 	読み込み済みの辞書を破棄します。次回の `kensaku#query()` で辞書を
 	読み直します。
@@ -101,6 +129,16 @@ g:kensaku_dictionary_url				*g:kensaku_dictionary_url*
 
 	辞書のダウンロード先 URL。このプラグイン自身は自動ダウンロードを
 	行わないため、現在は情報としてのみ保持しています。
+
+g:kensaku#rxop#vim					*g:kensaku#rxop#vim*
+
+	|kensaku#query()| の既定の rxop です。"\m" を前置し、Vim の正規
+	表現で使える記号を定義しています。
+
+g:kensaku#rxop#javascript				*g:kensaku#rxop#javascript*
+
+	JavaScript 用の rxop です。プレフィックスを持たず、"|" や "(?:" を
+	使う正規表現を生成します。
 
 ==============================================================================
 7. 実装と検証						*kensaku-implementation*

@@ -51,21 +51,37 @@ Plug 'todashuta/vim-kensaku'
 Vim script から使う場合:
 
 ```vim
-let @/ = '\m' . kensaku#query('kensaku')
+let @/ = kensaku#query('kensaku')
 normal! n
 ```
 
-`kensaku#query()` が返す正規表現には `\m` を前置していません。実際に検索に
-使う前に `\m` を付けるのが簡単です（`\v` や `\m` を前置するかは呼び出し側
-の都合に合わせられます）。
+`kensaku#query()` はデフォルトで `\m` を前置した正規表現を返します。`\v` を
+前置する [lambdalisue/kensaku-command.vim][kensaku-command] のような
+インテグレーションプラグインと組み合わせても、`\v` の後に `\m` が来るため
+magic モードで解釈され、そのまま動きます。
+
+[kensaku-command]: https://github.com/lambdalisue/vim-kensaku-command
+
+このプラグインも `:Kensaku` コマンドを提供します。kensaku-command.vim と併用
+する場合、`:Kensaku` は後に読み込まれたプラグインの定義が使われます。
 
 ## 関数
 
 | 関数 | 説明 |
 | --- | --- |
-| `kensaku#query({value})` | `{value}` の Migemo 正規表現を返す |
+| `kensaku#query({value}[, {option}])` | `{value}` の Migemo 正規表現を返す |
+| `kensaku#query_async({value}, {success}[, {option}])` | 結果を `{success}` に渡す（実装は同期） |
 | `kensaku#search({value})` | バッファ内を検索して最初のマッチへ移動する（`:Kensaku` の実装） |
 | `kensaku#reload()` | 読み込み済みの辞書を破棄する |
+
+`{option}` には `"rxop"` を指定できます。rxop は正規表現に使う記号を定義する
+辞書で、`prefix` / `or` / `startGroup` / `endGroup` / `startClass` /
+`endClass` / `newline` / `escape` を持ちます。旧形式のリスト
+`[prefix, or, startGroup, endGroup, startClass, endClass, newline]` と
+`[or, startGroup, endGroup, startClass, endClass, newline]` も受け付けます。
+
+`kensaku#set_roman_table()`（azik などのローマ字テーブル差し替え）はこの実装
+では未対応です。
 
 ## 設定
 
@@ -73,6 +89,8 @@ normal! n
 | --- | --- | --- |
 | `g:kensaku_dictionary_cache` | `~/.cache/kensaku.vim/migemo-compact-dict` | コンパクト辞書のパス |
 | `g:kensaku_dictionary_url` | jsmigemo のコンパクト辞書リリース URL | 辞書の配布元（情報として保持） |
+| `g:kensaku#rxop#vim` | `\m` 前置の Vim 用 rxop | `kensaku#query()` の既定値 |
+| `g:kensaku#rxop#javascript` | プレフィックスなしの JavaScript 用 rxop | 他言語向けの正規表現を作るとき用 |
 
 ## 実装
 

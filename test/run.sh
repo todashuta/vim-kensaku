@@ -52,17 +52,24 @@ run_vim query test/test_query.vim
 run_vim romaji test/test_romaji.vim
 run_vim charset test/test_charset.vim
 run_vim search test/test_search.vim
+run_vim rxop test/test_rxop.vim
 
 check query
 check romaji
 check charset
 
-if [ "$(cat test/actual/search.txt)" != "ok" ]; then
-  echo "FAIL: search"
-  cat test/actual/search.txt
-  failed=1
-else
-  echo "ok: search"
-fi
+check_text() {
+  name=$1
+  if [ "$(cat "test/actual/$name.txt")" != "ok" ]; then
+    echo "FAIL: $name"
+    cat "test/actual/$name.txt"
+    failed=1
+  else
+    echo "ok: $name"
+  fi
+}
+
+check_text search
+check_text rxop
 
 exit "$failed"

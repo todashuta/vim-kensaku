@@ -16,6 +16,11 @@ if !exists('g:kensaku_dictionary_cache')
   g:kensaku_dictionary_cache = expand('~/.cache/kensaku.vim/migemo-compact-dict')
 endif
 
+# g:kensaku#rxop#vim and g:kensaku#rxop#javascript are defined in the autoload
+# directory, but autoload only kicks in for functions.  Load the presets here
+# so that they are available as soon as the plugin is loaded.
+runtime autoload/kensaku/rxop.vim
+
 if !exists(':Kensaku')
   command! -nargs=1 -bar Kensaku call kensaku#search(<q-args>)
 endif
