@@ -4,52 +4,39 @@ on:
   push:
     branches:
       - main
+      - vim9script
   pull_request:
     paths:
       - "**.md"
-      - "**.ts"
       - "**.vim"
-      - "deno.jsonc"
+      - "**.sh"
+      - "**.tsv"
+      - "test/**"
+      - "doc/**"
       - ".github/workflows/test.yml"
   workflow_dispatch:
-    inputs:
-      denops_branch:
-        description: 'Denops branch to test'
-        required: false
-        default: 'main'
-
-defaults:
-  run:
-    shell: bash --noprofile --norc -eo pipefail {0}
-
-env:
-  DENOPS_BRANCH: ${{ github.event.inputs.denops_branch || 'main' }}
 
 jobs:
-  check:
-    strategy:
-      matrix:
-        runner:
-          - ubuntu-latest
-        deno_version:
-          - "1.x"
-    runs-on: ${{ matrix.runner }}
+  test:
+    runs-on: ubuntu-latest
     steps:
-      - run: git config --global core.autocrlf false
-        if: runner.os == 'Windows'
       - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1.1.4
+
+      # Vim 9.2 is required for the namespace form of :import and Vim9
+      # classes, so it is built from source instead of using the Ubuntu
+      # package.  The build result is cached by the action.
+      - name: Setup Vim
+        uses: rhysd/action-setup-vim@v1
         with:
-          deno-version: "${{ matrix.deno_version }}"
-      - uses: actions/cache@v4
-        with:
-          key: deno-${{ hashFiles('**/*') }}
-          restore-keys: deno-
-          path: |
-            /home/runner/.cache/deno/deps/https/deno.land
-      - name: Lint check
-        run: deno lint
-      - name: Format check
-        run: deno fmt --check
-      - name: Type check
-        run: deno task check
+          version: v9.2.1259
+          configure-args: |
+            --with-features=huge --disable-nls
+
+      - name: Download Migemo compact dictionary
+        run: |
+          mkdir -p "$HOME/.cache/kensaku.vim"
+          curl -fL -o "$HOME/.cache/kensaku.vim/migemo-compact-dict" \
+            https://github.com/oguna/migemo-compact-dict-latest/releases/download/v0.2/migemo-compact-dict
+
+      - name: Run tests
+        run: ./test/run.sh

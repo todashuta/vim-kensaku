@@ -1,0 +1,140 @@
+*kensaku.txt*	Migemo for Vim9 script
+
+==============================================================================
+CONTENTS						*kensaku-contents*
+
+  1. はじめに			|kensaku-introduction|
+  2. 必要条件			|kensaku-requirements|
+  3. セットアップ		|kensaku-setup|
+  4. 使い方			|kensaku-usage|
+  5. 関数			|kensaku-functions|
+  6. 設定			|kensaku-configuration|
+  7. 実装と検証			|kensaku-implementation|
+
+==============================================================================
+1. はじめに						*kensaku-introduction*
+
+kensaku.vim は Migemo を利用してローマ字のまま日本語を検索する機能を提供
+します。このプラグインは、Deno と denops.vim に依存する
+https://github.com/lambdalisue/vim-kensaku を Vim9 script だけで実装した
+ものです。
+
+ローマ字のクエリを、日本語・漢字・全角半角・カタカナ・半角カナを含む Vim の
+正規表現に変換します。たとえば "kensaku" は次のような正規表現になります: >
+
+	\%(kensaku\|けんさく\|ケンサク\|健[作策]\|兼作\|...\|検索\|...\)
+
+<
+辞書には jsmigemo と同じコンパクト辞書を使用するため、C/Migemo のインス
+トールは不要です。
+
+==============================================================================
+2. 必要条件					*kensaku-requirements*
+
+- Vim 9.2 以降
+  :import の名前空間形式 (`:import {filename} as {name}`) を Vim 9.2 の
+  仕様で使うためです。
+- Migemo コンパクト辞書 (約 2.1MB)
+
+Neovim では動作しません (Vim9 script のクラスと :import を使用しています)。
+
+==============================================================================
+3. セットアップ						*kensaku-setup*
+
+辞書をダウンロードしてキャッシュします: >
+
+	mkdir -p ~/.cache/kensaku.vim
+	curl -fL -o ~/.cache/kensaku.vim/migemo-compact-dict \
+	  https://github.com/oguna/migemo-compact-dict-latest/releases/download/v0.2/migemo-compact-dict
+
+<
+パッケージマネージャーでインストールしてください。辞書は最初のクエリ時に
+遅延して読み込まれるため、Vim の起動時間は増えません。
+
+==============================================================================
+4. 使い方						*kensaku-usage*
+
+バッファ内をローマ字で検索します: >
+
+	:Kensaku kensaku
+
+<
+これ以外の使い方をする場合は |kensaku#query()| を呼び出してください: >
+
+	let @/ = kensaku#query('kensaku')
+	normal! n
+
+<
+:kensaku-search.vim: のような検索インテグレーションを使う場合は、プラグイ
+ン側で `kensaku#query()` を呼び出してください。
+
+==============================================================================
+5. 関数						*kensaku-functions*
+
+kensaku#query({value})					*kensaku#query()*
+
+	{value} の Migemo 正規表現を文字列で返します。正規表現には "\m" を
+	前置しないので、必要に応じて呼び出し側で前置してください。実際に
+	検索に使う前に `\m` を付けるのが簡単です: >
+
+		let @/ = '\m' . kensaku#query('kensaku')
+
+<	kensaku#reload()					*kensaku#reload()*
+
+	読み込み済みの辞書を破棄します。次回の `kensaku#query()` で辞書を
+	読み直します。
+
+kensaku#search({value})					*kensaku#search()*
+
+	バッファを {value} の Migemo 正規表現で検索し、最初のマッチへ移動
+	します。`:Kensaku` コマンドの実装です。
+
+==============================================================================
+6. 設定						*kensaku-configuration*
+
+g:kensaku_dictionary_cache				*g:kensaku_dictionary_cache*
+
+	コンパクト辞書のパス。既定値: >
+		~/.cache/kensaku.vim/migemo-compact-dict
+<
+g:kensaku_dictionary_url				*g:kensaku_dictionary_url*
+
+	辞書のダウンロード先 URL。このプラグイン自身は自動ダウンロードを
+	行わないため、現在は情報としてのみ保持しています。
+
+==============================================================================
+7. 実装と検証						*kensaku-implementation*
+
+実装は jsmigemo の各クラスを Vim9 script に移植したものです。
+
+	autoload/kensaku/bitvector.vim	BitVector (rank/select)
+	autoload/kensaku/loudstrie.vim	LOUDSTrie
+	autoload/kensaku/dictionary.vim	CompactDictionary
+	autoload/kensaku/doublearray.vim	DoubleArray
+	autoload/kensaku/romaji.vim	RomajiProcessor2
+	autoload/kensaku/charset.vim	全角半角・ひらがなカタカナ変換
+	autoload/kensaku/ternary.vim	TernaryRegexGenerator
+	autoload/kensaku/migemo.vim	Migemo
+
+移植に伴う主な違い:
+
+- jsmigemo は generator で辞書の候補を列挙しますが、Vim9 script には
+  generator がないため、候補をリストに集めて返します。
+- jsmigemo の木構造は null 許容のオブジェクト参照を使いますが、Vim9
+  script には null がないため、ノードを 1 本の数値リストに格納し、
+  インデックス 0 を「ノードなし」として扱います。
+- Vim9 script には記号のビット演算子がないため、and() / or() / invert()
+  関数を使います。
+- ローマ字変換と文字変換のテーブルは tools/generate-tables.py で jsmigemo
+  のソースから生成します。
+
+検証は jsmigemo の出力と突き合わせて行っています (test/run.sh)。
+
+	vim9script から抜粋された 20 のクエリについて、jsmigemo が生成する
+	正規表現と完全に一致すること
+	jsmigemo の test/romantable.txt の 322 入力について、ローマ字から
+	ひらがなへの変換結果と予測変換結果が一致すること
+	文字変換 (全角半角、ひらがなカタカナ) が一致すること
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:norl:

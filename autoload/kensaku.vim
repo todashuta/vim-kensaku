@@ -1,32 +1,25 @@
-function! kensaku#query(value, ...) abort
-  if denops#plugin#wait('kensaku') isnot# 0
-    return ''
+" Legacy entry point of this plugin.
+"
+" Vim9 script functions must be named with a capital letter and cannot contain
+" '#', so the legacy autoload names are defined here and forward to the Vim9
+" implementation in autoload/kensaku/impl.vim.
+
+function! kensaku#query(value) abort
+  return kensaku#impl#Query(a:value)
+endfunction
+
+function! kensaku#reload() abort
+  return kensaku#impl#Reload()
+endfunction
+
+" Searches the current buffer for the migemo regexp of {value}.
+function! kensaku#search(value) abort
+  let l:pattern = kensaku#query(a:value)
+  if empty(l:pattern)
+    echoerr 'kensaku: no pattern was generated for ' . string(a:value)
+    return
   endif
-  let l:option = extend({
-        \ 'rxop': g:kensaku#rxop#vim,
-        \}, a:0 ? a:1 : {},
-        \)
-  return denops#request('kensaku', 'query', [a:value, l:option])
-endfunction
-
-function! kensaku#query_async(value, success, ...) abort
-  let l:option = a:0 ? a:1 : {}
-  let l:option.rxop = get(l:option, 'rxop', g:kensaku#rxop#vim)
-  let l:Failure = get(l:option, 'failure', funcref('s:failure'))
-  return denops#request_async(
-        \ 'kensaku',
-        \ 'query',
-        \ [a:value, l:option],
-        \ { v -> a:success(v) },
-        \ { e -> l:Failure(e) },
-        \)
-endfunction
-
-function! kensaku#set_roman_table(romanTable) abort
-  call denops#plugin#wait_async('kensaku', {
-        \ -> denops#notify('kensaku', 'setRomanTable', [a:romanTable]) })
-endfunction
-
-function! s:failure(err) abort
-  echoerr a:err
+  let @/ = l:pattern
+  " The pattern may legitimately not match; that is not an error.
+  silent! normal! n
 endfunction
